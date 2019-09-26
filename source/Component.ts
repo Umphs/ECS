@@ -2,12 +2,11 @@ import { Entity } from "./Entity";
 import { ComponentType } from "./ComponentType";
 import { ComponentStore } from "./ComponentStore";
 
-export abstract class Component {
+export abstract class Component<A extends any[] = any> {
 
   readonly entity = Entity.Invalid;
 
-  initialize(): void;
-  initialize(...params: any): void;
+  initialize(...args: A): void;
   initialize() { }
 
   dispose() { }
@@ -25,22 +24,22 @@ export namespace Component {
   /**
    * Register component class using a decorator.
    */
-  export function register(): <C extends Component, T extends ComponentType<C>>(type: T) => T;
+  export function register(): <C extends Component<A>, T extends ComponentType<C>, A extends any[]>(type: T) => T;
 
   /**
    * Register component class directly.
    */
-  export function register<C extends Component, T extends ComponentType<C>>(type: T): T;
+  export function register<C extends Component<A>, T extends ComponentType<C>, A extends any[]>(type: T): T;
 
   /**
    * Register component class, and decorate it with accessors for other components.
    */
-  export function register(dependancies: Record<string, ComponentType>): <C extends Component, T extends ComponentType<C>>(type: T) => T;
+  export function register(dependancies: Record<string, ComponentType>): <C extends Component<A>, T extends ComponentType<C>, A extends any[]>(type: T) => T;
 
   /**
    * Register component class directly, and decorate it with accessors for other components.
    */
-  export function register<C extends Component, T extends ComponentType<C>>(type: T, dependancies: Record<string, ComponentType>): T;
+  export function register<C extends Component, T extends ComponentType<C>, A extends any[]>(type: T, dependancies: Record<string, ComponentType>): T;
 
   export function register() {
     switch (arguments.length) {
@@ -60,18 +59,14 @@ export namespace Component {
   export const stores: ComponentStore[] = [];
 
   function registerComponent<C extends Component, T extends ComponentType<C>>(type: T, deps: Record<string, ComponentType>): T {
-
     stores.push(new ComponentStore(type));
-
     const acc = Object.create(null);
     for (const name of Object.keys(deps)) {
       const dep = deps[name];
       acc[name] = { get() { return Entity.requireComponent(this.entity, dep); } };
     }
     Object.defineProperties(type.prototype, acc);
-
     return type;
-
   }
 
 }

@@ -4,7 +4,7 @@ import { Entity } from "./Entity";
 import { createRecord } from "./utils";
 import { Cleaner } from "./Cleaner";
 
-export class ComponentStore<C extends Component = Component> {
+export class ComponentStore<C extends Component<T> = Component<any>, T extends any[] = any> {
 
   private pool: C[] = [];
   private indices = createRecord<number, number>();
@@ -13,7 +13,7 @@ export class ComponentStore<C extends Component = Component> {
   readonly components: C[];
 
   constructor(private type: ComponentType<C>) {
-    const prototype = type.prototype as C;
+    const prototype = type.prototype;
     this.use = prototype.initialize;
     this.unuse = prototype.dispose;
     this.components = [];
@@ -27,18 +27,18 @@ export class ComponentStore<C extends Component = Component> {
     } else {
       component = new this.type();
     }
-    this.attach(e, component);
-    this.use.apply(component, args);
+    this.attach(e, component, args);
     return component;
   }
 
-  attach(e: Entity, component: C) {
+  attach(e: Entity, component: C, args: any) {
     const components = this.components;
     const index = components.length;
     this.indices.set(+e, index);
     components.push(component);
     // @ts-ignore
     component.entity = e;
+    if (args) this.use.apply(component, args);
   }
 
   dispose(component: C) {
@@ -93,8 +93,7 @@ export class ComponentStore<C extends Component = Component> {
       (component.entity !== Entity.Invalid) ||
       ((i = this.indices.get(+e)) === undefined)
     ) return false;
-    this.attach(e, component);
-    if (args) this.use.apply(component, args);
+    this.attach(e, component, args);
     return true;
   }
 
@@ -126,8 +125,8 @@ export class ComponentStore<C extends Component = Component> {
 
   }
 
-  static get<C extends Component>(type: ComponentType<C>): ComponentStore<C>;
-  static get<C extends Component>(component: C): ComponentStore<C>;
+  static get<C extends Component<T>, T extends any[]>(type: ComponentType<C>): ComponentStore<C>;
+  static get<C extends Component<T>, T extends any[]>(component: C): ComponentStore<C>;
 
   static get(x: any) {
     return typeof x === "function" ? x.store : x.constructor.store;
