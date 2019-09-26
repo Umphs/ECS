@@ -4,7 +4,7 @@ import { ComponentStore } from "./ComponentStore";
 
 export abstract class Component<A extends any[] = any> {
 
-  readonly entity = Entity.Invalid;
+  readonly entity = -1 as unknown as Entity;
 
   initialize(...args: A): void;
   initialize() { }
@@ -62,11 +62,12 @@ export namespace Component {
     stores.push(new ComponentStore(type));
     const acc = Object.create(null);
     for (const name of Object.keys(deps)) {
-      const dep = deps[name];
-      acc[name] = { get() { return Entity.requireComponent(this.entity, dep); } };
+      acc[name] = createAccessor(deps[name]);
     }
     Object.defineProperties(type.prototype, acc);
     return type;
   }
+
+  export let createAccessor: <C extends Component<any>>(type: ComponentType<C, any>) => { get(this: C): C; };
 
 }

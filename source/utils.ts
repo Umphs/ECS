@@ -8,3 +8,11 @@ export function createRecord<T, K extends number | string = string>() {
   };
 }
 
+export function debounce(fn: () => void) {
+  let skip = false;
+  const cb = () => { fn(); skip = true; };
+  return () => {
+    if (skip) return; skip = true;
+    setTimeout(cb, 0);
+  };
+}

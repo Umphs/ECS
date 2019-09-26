@@ -1,8 +1,21 @@
 import { Component } from "./Component";
 import { ComponentType } from "./ComponentType";
 import { Entity } from "./Entity";
-import { createRecord } from "./utils";
-import { Cleaner } from "./Cleaner";
+import { createRecord, debounce } from "./utils";
+
+const disposedComponents = new Set<Component>();
+
+export function disposeLater(component: Component) {
+  disposeComponents();
+  disposedComponents.add(component);
+}
+
+const disposeComponents = debounce(() => {
+  for (const component of disposedComponents) {
+    component.dispose();
+  }
+  disposedComponents.clear();
+});
 
 export class ComponentStore<C extends Component<T> = Component<any>, T extends any[] = any> {
 
@@ -47,7 +60,7 @@ export class ComponentStore<C extends Component<T> = Component<any>, T extends a
     const indices = this.indices;
     indices.delete(e);
     // @ts-ignore
-    component.entity = Entity.Invalid;
+    component.entity = -1 as unknown as Entity;
     const components = this.components;
     const index = indices.get(e);
     const last = components.pop()!;
@@ -90,7 +103,7 @@ export class ComponentStore<C extends Component<T> = Component<any>, T extends a
   addComponent(e: Entity, component: C, args: any) {
     let i: number;
     if (
-      (component.entity !== Entity.Invalid) ||
+      (component.entity !== -1) ||
       ((i = this.indices.get(+e)) === undefined)
     ) return false;
     this.attach(e, component, args);
@@ -102,7 +115,7 @@ export class ComponentStore<C extends Component<T> = Component<any>, T extends a
     if (i === undefined) return false;
     const component = this.components[i];
     if (now) this.dispose(component);
-    else Cleaner.queueComponent(this, component);
+    else disposeLater(component);
     return true;
   }
 
@@ -119,7 +132,7 @@ export class ComponentStore<C extends Component<T> = Component<any>, T extends a
     if (immediate)
       this.dispose(component);
     else
-      Cleaner.queueComponent(this, component);
+      disposeLater(component);
 
     return true;
 

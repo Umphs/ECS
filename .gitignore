@@ -85,3 +85,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# should I add built files ?
+build/*

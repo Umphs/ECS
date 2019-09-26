@@ -1,11 +1,15 @@
 import { Component } from "./Component";
 import { ComponentType } from "./ComponentType";
 import { ComponentStore } from "./ComponentStore";
-import { Cleaner } from "./Cleaner";
+import { debounce } from "./utils";
 
 export declare class Entity { private constructor(); }
 
 export namespace Entity {
+
+  Component.createAccessor = (type) => {
+    return { get() { return requireComponent(this.entity, type); } };
+  };
 
   let guid = 0; const cache: Entity[] = [];
 
@@ -13,16 +17,29 @@ export namespace Entity {
     return cache.length > 0 ? cache.pop()! : guid++ as unknown as Entity;
   }
 
+  const disposedEntities = new Set<Entity>();
+  const disposeEntities = debounce(() => {
+    for (const e of disposedEntities) {
+      disposeNow(e);
+    }
+    disposedEntities.clear();
+  });
+
+  function disposeNow(e: Entity) {
+    for (const store of Component.stores)
+      store.detachComponent(e, false);
+    cache.push(e);
+  }
+
   export function dispose(e: Entity): void;
   export function dispose(e: Entity, immediate: boolean): void;
 
-  export function dispose(e: Entity, immediate = false) {
-    if (immediate) {
-      for (const store of Component.stores)
-        store.detachComponent(e, false);
-      cache.push(e);
+  export function dispose(e: Entity, now = false) {
+    if (now) {
+      disposeNow(e);
     } else {
-      Cleaner.queueEntity(e);
+      disposeEntities();
+      disposedEntities.add(e);
     }
   }
 
