@@ -1,1 +1,2 @@
-import { Component } from "./Component";
+export { Component } from "./Component";
+export { Entity } from "./Entity";

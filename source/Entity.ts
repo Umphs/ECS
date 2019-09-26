@@ -1,60 +1,57 @@
-import { Component, ComponentType } from "./Component";
+import { Component } from "./Component";
+import { ComponentType } from "./ComponentType";
 import { ComponentStore } from "./ComponentStore";
 
-export class Entity {
-
-  constructor() { return Entity.create(); }
-
-  getComponent<C extends Component, T extends ComponentType<C>>(type: T) {
-    return ComponentStore.get(type.hash).getComponentFor(this)!;
-  }
-
-  addComponent<C extends Component, T extends ComponentType<C>>(type: T) {
-    return ComponentStore.get(type.hash).addTo(this);
-  }
-
-  removeComponent<C extends Component, T extends ComponentType<C>>(type: T) {
-    return ComponentStore.get(type.hash).removeFrom(this);
-  }
-
-}
+export declare class Entity { private constructor(); }
 
 export namespace Entity {
 
-  const src = Entity.prototype;
-  const dst = Number.prototype as unknown as Entity;
+  export const Invalid = -1 as unknown as Entity;
 
-  Object.assign(dst, src);
+  export function addComponent<C extends Component>(entity: Entity, component: C): C;
+  export function addComponent<C extends Component, T extends ComponentType<C>>(entity: Entity, type: T): C;
 
-  let guid = 0; const reusables: number[] = [];
-
-  export function create() {
-    return make();
+  export function addComponent(entity: Entity, x: any, ...args: any) {
+    if (typeof x === "function")
+      return addComponentT(entity, x, args);
+    return addComponentC(entity, x, args);
   }
 
-  export function dispose(entity: Entity) {
-    ComponentStore.removeAllFrom(entity)
-    reuse(entity);
+  function addComponentT<C extends Component, T extends ComponentType<C>>(entity: Entity, type: T, args: any) {
+    return ComponentStore.get(type).attachComponent(entity, args);
   }
 
-  // @ts-ignore
-  function make(): Entity;
-  function make() {
-    return (
-      reusables.length > 0 ?
-        reusables.pop()! :
-        guid++
-    );
+  function addComponentC<C extends Component>(entity: Entity, component: C, args: any) {
+    return ComponentStore.get(component).addComponent(entity, component, args);
   }
 
-  // @ts-ignore
-  function reuse(entity: Entity): void;
-  function reuse(uuid: number) {
-    if (guid === uuid + 1) {
-      guid = uuid;
-    } else {
-      reusables.push(uuid);
-    }
+  export function removeComponent<C extends Component>(entity: Entity, component: C): void;
+  export function removeComponent<C extends Component, T extends ComponentType<C>>(entity: Entity, type: T): void;
+
+  export function removeComponent(entity: Entity, x: any) {
+    if (typeof x === "function")
+      return removeComponentT(entity, x);
+    return removeComponentC(entity, x);
+  }
+
+  function removeComponentT<C extends Component, T extends ComponentType<C>>(entity: Entity, type: T) {
+    return ComponentStore.get(type).detachComponent(entity);
+  }
+
+  function removeComponentC<C extends Component>(entity: Entity, component: C) {
+    return ComponentStore.get(component).removeComponent(entity, component);
+  }
+
+  export function getComponent<C extends Component, T extends ComponentType<C>>(entity: Entity, type: T) {
+    return ComponentStore.get(type).getComponent(entity);
+  }
+
+  export function hasComponent<C extends Component, T extends ComponentType<C>>(entity: Entity, type: T) {
+    return ComponentStore.get(type).hasComponent(entity);
+  }
+
+  export function requireComponent<C extends Component, T extends ComponentType<C>>(entity: Entity, type: T, ...args: any) {
+    return ComponentStore.get(type).requireComponent(entity, args);
   }
 
 }

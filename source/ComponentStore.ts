@@ -1,93 +1,123 @@
-import { Component, ComponentType } from "./Component";
+import { Component } from "./Component";
+import { ComponentType } from "./ComponentType";
 import { Entity } from "./Entity";
+import { createRecord } from "./utils";
 
-const stores: ComponentStore[] = [];
+export class ComponentStore<C extends Component = Component> {
 
-export class ComponentStore<C extends Component = Component, T extends ComponentType<C> = ComponentType<C>> {
+  private pool: C[] = [];
+  private indices = createRecord<number, number>();
+  private use: typeof Component.prototype.initialize;
+  private unuse: typeof Component.prototype.dispose;
+  readonly components: C[];
 
-  static register<C extends Component, T extends ComponentType<C>>(type: T) {
-    stores[type.hash] = new ComponentStore(type);
+  constructor(private type: ComponentType<C>) {
+    const prototype = type.prototype as C;
+    this.use = prototype.initialize;
+    this.unuse = prototype.dispose;
+    this.components = [];
   }
 
-  static get<C extends Component, S extends ComponentStore<C>>(hash: number) {
-    const store = stores[hash] as S;
-    if (!store) throw `No Component with hash ${hash.toString(16)} was registred.`;
-    return store;
-  }
-
-  readonly type: T;
-
-  private constructor(type: T) {
-    const hash = type.hash;
-    if (!hash) throw `A component store expects a hash on the component type.`;
-    if (stores[type.hash]) throw `There can only be one component store`;
-    this.type = type;
-  }
-
-  private cache: C[] = [];
-  private indices: Record<number, number> = Object.create(null);
-  private components: C[] = [];
-
-  getComponentFor(entity: Entity) {
-    const index = this.indices[+entity];
-    if (index == undefined) return undefined;
-    return this.components[index];
-  }
-
-  addTo(entity: Entity) {
-    const index = this.indices[+entity];
-    if (index) return this.components[index];
-    const component = this.rentFor(entity)!;
-    component.enable();
-    return component;
-  }
-
-  private rentFor(entity: Entity): C {
-    const components = this.components;
-    const indices = this.indices;
-    let index = indices[+entity];
+  private create(e: Entity, args: any) {
+    const pool = this.pool;
     let component: C;
-    const cache = this.cache;
-    if (cache.length > 0) {
-      component = cache.pop()!;
-      component.entity = entity;
+    if (pool.length > 0) {
+      component = pool.pop()!;
     } else {
-      component = new this.type(entity);
+      component = new this.type();
     }
-    index = components.length;
+    const components = this.components;
+    const index = components.length;
+    this.indices.set(+e, index);
     components.push(component);
-    indices[+entity] = index;
+    // @ts-ignore
+    component.entity = e;
+    this.use.apply(component, args);
     return component;
   }
 
-  removeFrom(entity: Entity) {
-    if (this.indices[+entity]) {
-      const component = this.getComponentFor(entity)!;
-      component.disable();
-      this.return(component);
-    }
-  }
-
-  private return(component: C) {
+  private dispose(component: C) {
+    this.unuse.apply(component);
+    const e = +component.entity;
     const indices = this.indices;
-    const entity = +component.entity;
-    const index = indices[entity];
-    if (index == undefined) return;
-    const cache = this.cache;
+    indices.delete(e);
+    // @ts-ignore
+    component.entity = Entity.Invalid;
     const components = this.components;
+    const index = indices.get(e);
     const last = components.pop()!;
-    if (last !== component) {
+    if (index !== components.length) {
+      indices.set(+last.entity, index);
       components[index] = last;
-      indices[+last.entity] = index;
     }
-    delete indices[entity];
-    cache.push(component);
+    this.pool.push(component);
   }
 
-  static removeAllFrom(entity: Entity) {
-    for (const store of stores) {
-      entity.removeComponent(store.type);
+  hasComponent(e: Entity) {
+    return this.indices.has(+e);
+  }
+
+  compareComponent(e: Entity, component: C) {
+    return this.getComponent(e) === component;
+  }
+
+  getComponent(e: Entity) {
+    const i = this.indices.get(+e);
+    if (i === undefined) return undefined;
+    return this.components[i];
+  }
+
+  attachComponent(e: Entity, args: any) {
+    const i = this.indices.get(+e);
+    if (i !== undefined) return undefined;
+    return this.create(e, args);
+  }
+
+  requireComponent(e: Entity, args: any) {
+    const i = this.indices.get(+e);
+    if (i === undefined)
+      return this.create(e, args);
+    else {
+      return this.components[i];
     }
+  }
+
+  addComponent(e: Entity, component: C, args: any) {
+    let i: number;
+    if (
+      (component.entity !== Entity.Invalid) ||
+      ((i = this.indices.get(+e)) === undefined)
+    ) return false;
+    return true;
+  }
+
+  detachComponent(e: Entity) {
+    const i = this.indices.get(+e);
+    if (i === undefined) return false;
+    this.dispose(this.components[i]);
+    return true;
+  }
+
+  removeComponent(e: Entity, component: C) {
+
+    let i: number;
+
+    if (
+      (component.entity !== e) ||
+      ((i = this.indices.get(+e)) === undefined) ||
+      (this.components[i] !== component)
+    ) return false;
+
+    this.dispose(component);
+    return true;
+
+  }
+
+  static get<C extends Component>(type: ComponentType<C>): ComponentStore<C>;
+  static get<C extends Component>(component: C): ComponentStore<C>;
+
+  static get(x: any) {
+    return typeof x === "function" ? x.store : x.constructor.store;
   }
 
 }

@@ -1,13 +1,10 @@
-/**
- * Port of RS Hash from
- * https://gist.github.com/WebOptimusPrime/59893fe95716fdead48d196faeddb8ab
- */
-export function hashRS(string: string) {
-  const length = string.length;
-  let h = 0, a = 63689, b = 378551;
-  for (let i = 0; i < length; i++) {
-    h = (Math.imul(h, a) + string.charCodeAt(i)) >>> 0;
-    a = Math.imul(a, b) >>> 0;
-  }
-  return h;
+export function createRecord<T, K extends number | string = string>() {
+  const record: Record<K, T> = Object.create(null);
+  return {
+    has(k: K) { return record[k] as unknown as boolean; },
+    get(k: K) { return record[k]; },
+    delete(k: K) { delete record[k]; },
+    set(k: K, value: T) { record[k] = value; },
+  };
 }
+
