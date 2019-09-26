@@ -57,9 +57,11 @@ export namespace Component {
     }
   }
 
+  export const stores: ComponentStore[] = [];
+
   function registerComponent<C extends Component, T extends ComponentType<C>>(type: T, deps: Record<string, ComponentType>): T {
 
-    new ComponentStore(type);
+    stores.push(new ComponentStore(type));
 
     const acc = Object.create(null);
     for (const name of Object.keys(deps)) {

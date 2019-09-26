@@ -2,6 +2,7 @@ import { Component } from "./Component";
 import { ComponentType } from "./ComponentType";
 import { Entity } from "./Entity";
 import { createRecord } from "./utils";
+import { Cleaner } from "./Cleaner";
 
 export class ComponentStore<C extends Component = Component> {
 
@@ -26,17 +27,21 @@ export class ComponentStore<C extends Component = Component> {
     } else {
       component = new this.type();
     }
+    this.attach(e, component);
+    this.use.apply(component, args);
+    return component;
+  }
+
+  attach(e: Entity, component: C) {
     const components = this.components;
     const index = components.length;
     this.indices.set(+e, index);
     components.push(component);
     // @ts-ignore
     component.entity = e;
-    this.use.apply(component, args);
-    return component;
   }
 
-  private dispose(component: C) {
+  dispose(component: C) {
     this.unuse.apply(component);
     const e = +component.entity;
     const indices = this.indices;
@@ -88,17 +93,21 @@ export class ComponentStore<C extends Component = Component> {
       (component.entity !== Entity.Invalid) ||
       ((i = this.indices.get(+e)) === undefined)
     ) return false;
+    this.attach(e, component);
+    if (args) this.use.apply(component, args);
     return true;
   }
 
-  detachComponent(e: Entity) {
+  detachComponent(e: Entity, now: boolean) {
     const i = this.indices.get(+e);
     if (i === undefined) return false;
-    this.dispose(this.components[i]);
+    const component = this.components[i];
+    if (now) this.dispose(component);
+    else Cleaner.queueComponent(this, component);
     return true;
   }
 
-  removeComponent(e: Entity, component: C) {
+  removeComponent(e: Entity, component: C, immediate: boolean) {
 
     let i: number;
 
@@ -108,7 +117,11 @@ export class ComponentStore<C extends Component = Component> {
       (this.components[i] !== component)
     ) return false;
 
-    this.dispose(component);
+    if (immediate)
+      this.dispose(component);
+    else
+      Cleaner.queueComponent(this, component);
+
     return true;
 
   }
