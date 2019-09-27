@@ -44,7 +44,7 @@ const Position = Component.register(class Position extends Component {
 })
 class Transform extends Component {
 
-  // getters are added to the protype for you
+  // getters are added to the prototype for you
 
   readonly position!: Position;
   readonly rotation!: Rotation;
