@@ -12,7 +12,7 @@
 
 ### Declaring a component
 
-```
+```ts
 import { Component } from "./ecs.js";
 
 @Component.register()
@@ -39,7 +39,7 @@ const Position = Component.register(class Position extends Component {
 
 ### Component dependancies
 
-```
+```ts
 @Component.register({
   position: Position,
   rotation: Rotation
@@ -61,14 +61,14 @@ class Transform extends Component {
 
 ### Entities
 
-```
+```ts
 const e = Entity.create();
 Entity.addComponent(Transform);
 ```
 
 ### Prefabs
 
-```
+```ts
 const GameObject = Prefab.create([ Transform ], ([ transform ], x: number, y: number, z: number) => {
   transform.initialize(x, y, z);
 });
@@ -76,7 +76,7 @@ const GameObject = Prefab.create([ Transform ], ([ transform ], x: number, y: nu
 
 ### Systems
 
-```
+```ts
 @System.register(0 /* order */, { simulate: RigidBody })
 class RegidBodySystem {
   // system wide fields go here
