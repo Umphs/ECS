@@ -13,8 +13,6 @@
 ### Declaring a component
 
 ```ts
-import { Component } from "./ecs.js";
-
 @Component.register()
 class Position extends Component {
 
@@ -70,7 +68,7 @@ Entity.addComponent(Transform);
 
 ```ts
 const GameObject = Prefab.create([ Transform ], ([ transform ], x: number, y: number, z: number) => {
-  transform.initialize(x, y, z);
+  transform.initialize(x, y, z, 0, 0);
 });
 ```
 
