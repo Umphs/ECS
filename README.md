@@ -108,5 +108,6 @@ System.invoke("simulate", dt);
 - [x] Entity namespace and opaque class.
 - [x] Prefab class to facilitate entity composition.
 - [x] System registration and invokation.
+- [ ] Add support for components that be attached multiple time to an entity
 - [ ] Serialization (saving and loading)
 
