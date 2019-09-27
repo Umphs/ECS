@@ -8,6 +8,95 @@
 >
 > &mdash; [Wikipedia](https://en.wikipedia.org/wiki/Entity_component_system)
 
+## Usage
+
+### Declaring a component
+
+```
+import { Component } from "./ecs.js";
+
+@Component.register()
+class Position extends Component {
+
+  initialize(x: number, y: number, z: number) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+
+  x = 0;
+  y = 0;
+  z = 0;
+
+}
+
+// or
+
+const Position = Component.register(class Position extends Component {
+  // ...
+})
+```
+
+### Component dependancies
+
+```
+@Component.register({
+  position: Position,
+  rotation: Rotation
+})
+class Transform extends Component {
+
+  // getters are added to the protype for you
+
+  readonly position!: Position;
+  readonly rotation!: Rotation;
+
+  initialize(x: number, y: number, z: number, pitch: number, yaw: number) {
+    this.position.initialize(x, y, z);
+    this.rotation.initialize(pitch, yaw);
+  }
+
+}
+```
+
+### Entities
+
+```
+const e = Entity.create();
+Entity.addComponent(Transform);
+```
+
+### Prefabs
+
+```
+const GameObject = Prefab.create([ Transform ], ([ transform ], x: number, y: number, z: number) => {
+  transform.initialize(x, y, z);
+});
+```
+
+### Systems
+
+```
+@System.register(0 /* order */, { simulate: RigidBody })
+class RegidBodySystem {
+  // system wide fields go here
+  simulate(bodies: RigidBody, dt: number) {
+    // `this` is the single instance of RigidBodySystem
+    for (const body of bodies) {
+      // ...
+    }
+  }
+}
+
+// later
+
+System.initialize(); // this instanciates the rigid body system
+
+// in game loop
+
+System.invoke("simulate", dt);
+```
+
 ## Pillars
 
 - [x] Ease of use with typescript.
