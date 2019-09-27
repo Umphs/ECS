@@ -273,17 +273,26 @@
     }
 
     (function (System) {
-        const systems = [];
         const channels = Object.create(null);
+        let systems = new WeakSet();
+        let registry = [];
+        let initialized = false;
         function register(order, types) {
             return (system) => {
-                systems.push({ order, system, types });
+                if (initialized || systems.has(system))
+                    return system;
+                registry.push({ order, system, types });
+                systems.add(system);
+                return system;
             };
         }
         System.register = register;
         function initialize() {
-            systems.sort((a, b) => Math.sign(a.order - b.order));
-            for (const { system, types } of systems) {
+            if (initialized)
+                return;
+            initialized = true;
+            registry.sort((a, b) => Math.sign(a.order - b.order));
+            for (const { system, types } of registry) {
                 const instance = new system();
                 for (const name in types) {
                     if (!types.hasOwnProperty || types.hasOwnProperty(name)) {
@@ -300,11 +309,19 @@
                     }
                 }
             }
+            registry.length = 0;
+            registry = null;
+            systems = null;
         }
         System.initialize = initialize;
         function invoke(name) {
-            for (const callback of channels[name]) {
-                callback.apply(null, arguments);
+            if (!initialized)
+                return;
+            const channel = channels[name];
+            if (channel) {
+                for (const callback of channel) {
+                    callback.apply(null, arguments);
+                }
             }
         }
         System.invoke = invoke;

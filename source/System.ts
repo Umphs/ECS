@@ -10,28 +10,33 @@ export namespace System {
     }>;
   };
 
-  const systems: {
+  const channels: Record<string, Function[]> = Object.create(null);
+  let systems = new WeakSet<SystemType<string, Component>>();
+  let registry: {
     order: number;
     system: SystemType<string, Component>;
     types: Record<string, ComponentType | null>;
   }[] = [];
-
-  const channels: Record<string, Function[]> = Object.create(null);
+  let initialized = false;
 
   export function register<
     K extends string,
     T extends ComponentType<C>,
     C extends Component
-  >(order: number, types: Record<K, T | null>) {
-    return <S extends SystemType<K, C>>(system: S) => {
-      // @ts-ignore
-      systems.push({ order, system, types });
+  >(order: number, types: Record<K, T | null>): <S extends SystemType<K, C>>(system: S) => S {
+    return (system: any) => {
+      if (initialized || systems.has(system)) return system;
+      registry.push({ order, system, types });
+      systems.add(system);
+      return system;
     };
   }
 
   export function initialize() {
-    systems.sort((a, b) => Math.sign(a.order - b.order))
-    for (const { system, types } of systems) {
+    if (initialized) return;
+    initialized = true;
+    registry.sort((a, b) => Math.sign(a.order - b.order))
+    for (const { system, types } of registry) {
       const instance = new system();
       for (const name in types) {
         if (!types.hasOwnProperty || types.hasOwnProperty(name)) {
@@ -47,12 +52,19 @@ export namespace System {
         }
       }
     }
+    registry.length = 0;
+    registry = null!;
+    systems = null!;
   }
 
   export function invoke<T extends any[]>(name: string, ...args: T): void;
   export function invoke(name: string) {
-    for (const callback of channels[name]) {
-      callback.apply(null, arguments);
+    if (!initialized) return;
+    const channel = channels[name];
+    if (channel) {
+      for (const callback of channel) {
+        callback.apply(null, arguments);
+      }
     }
   }
 
