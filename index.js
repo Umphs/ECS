@@ -272,6 +272,44 @@
         }
     }
 
+    (function (System) {
+        const systems = [];
+        const channels = Object.create(null);
+        function register(order, types) {
+            return (system) => {
+                systems.push({ order, system, types });
+            };
+        }
+        System.register = register;
+        function initialize() {
+            systems.sort((a, b) => Math.sign(a.order - b.order));
+            for (const { system, types } of systems) {
+                const instance = new system();
+                for (const name in types) {
+                    if (!types.hasOwnProperty || types.hasOwnProperty(name)) {
+                        const channel = channels[name] = channels[name] || [];
+                        const type = types[name];
+                        let callback;
+                        if (type) {
+                            callback = instance[name].bind(instance, type.store.components);
+                        }
+                        else {
+                            callback = instance[name].bind(instance);
+                        }
+                        channel.push(callback);
+                    }
+                }
+            }
+        }
+        System.initialize = initialize;
+        function invoke(name) {
+            for (const callback of channels[name]) {
+                callback.apply(null, arguments);
+            }
+        }
+        System.invoke = invoke;
+    })(exports.System || (exports.System = {}));
+
     exports.Component = Component;
     exports.Prefab = Prefab;
 
